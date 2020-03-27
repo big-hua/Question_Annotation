@@ -26,6 +26,12 @@ def data_loader(params, is_rebuild_dataset=False):
     df = pd.read_csv(params.data_path, header=None).rename(columns={0: 'label', 1: 'content'})
     # 并行清理数据
     df = parallelize(df, proc)
+    # 划分标签
+    df['label'] = df['label'].apply(lambda x: x.split())
+    # 保存fasttext训练数据
+    train_data, test_data = train_test_split(df[['label', 'content']], test_size=0.2, random_state=42)
+    train_data.to_csv(os.path.join(root, 'data', 'train_data.csv'), index=None, header=None, sep=' ')
+    test_data.to_csv(os.path.join(root, 'data', 'test_data.csv'), index=None, header=None, sep=' ')
     # word2index
     text_preprocesser = Tokenizer(num_words=params.vocab_size, oov_token="<UNK>")
     text_preprocesser.fit_on_texts(df['content'])
@@ -38,8 +44,7 @@ def data_loader(params, is_rebuild_dataset=False):
     x = text_preprocesser.texts_to_sequences(df['content'])
     # padding
     x = pad_sequences(x, maxlen=params.padding_size, padding='post', truncating='post')
-    # 划分标签
-    df['label'] = df['label'].apply(lambda x: x.split())
+
     # 多标签编码
     mlb = MultiLabelBinarizer()
     y = mlb.fit_transform(df['label'])
